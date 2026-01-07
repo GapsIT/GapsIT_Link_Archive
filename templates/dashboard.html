@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gaps IT Link Archieve Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+        <svg class="moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>Gaps IT Link Archieve</h2>
+            <div class="nav-right">
+                <span class="user-info">
+                    {{ employee.name }} ({{ employee.position }})
+                    {% if employee.is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
+                </span>
+                {% if employee.is_admin %}
+                <a href="/admin" class="btn btn-secondary">Admin Panel</a>
+                {% endif %}
+                <a href="/logout" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="error-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="header">
+            <div>
+                <h1>My Links</h1>
+                <p class="subtitle">Links for {{ employee.position }}</p>
+            </div>
+        </div>
+
+        <div id="linksContainer" class="links-container">
+            <div class="loading">Loading links...</div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            document.querySelector('.sun-icon').style.display = newTheme === 'dark' ? 'none' : 'block';
+            document.querySelector('.moon-icon').style.display = newTheme === 'dark' ? 'block' : 'none';
+        }
+
+        // Load saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                document.querySelector('.sun-icon').style.display = 'none';
+                document.querySelector('.moon-icon').style.display = 'block';
+            }
+        })();
+
+        // Copy to clipboard function
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy link');
+            });
+        }
+
+        async function loadLinks() {
+            try {
+                const response = await fetch('/api/links');
+                const data = await response.json();
+                
+                const container = document.getElementById('linksContainer');
+                
+                if (data.links && data.links.length > 0) {
+                    container.innerHTML = data.links.map(link => `
+                        <div class="link-card">
+                            <h3>${escapeHtml(link.title)}</h3>
+                            ${link.description ? `<p class="link-description">${escapeHtml(link.description)}</p>` : ''}
+                            <div class="link-url-container">
+                                <a href="${escapeHtml(link.url)}" target="_blank" class="link-url-text" title="${escapeHtml(link.url)}">
+                                    ${escapeHtml(link.url)}
+                                </a>
+                                <button onclick='copyToClipboard("${escapeHtml(link.url).replace(/"/g, '&quot;')}", this)' class="copy-btn">
+                                    Copy
+                                </button>
+                            </div>
+                            <div class="link-meta">
+                                <span>Added by ${escapeHtml(link.created_by || 'Admin')}</span>
+                                <span>${new Date(link.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="empty-state">No links available for your position yet.</div>';
+                }
+            } catch (error) {
+                document.getElementById('linksContainer').innerHTML = 
+                    '<div class="error-message">Error loading links. Please refresh the page.</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadLinks();
+    </script>
+</body>
+</html>

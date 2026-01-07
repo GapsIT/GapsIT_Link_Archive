@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Gaps IT Link Archieve</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+        <svg class="moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>Gaps IT Link Archieve - Admin Panel</h2>
+            <div class="nav-right">
+                <span class="user-info">{{ employee.name }}</span>
+                <a href="/dashboard" class="btn btn-secondary">My Links</a>
+                <a href="/logout" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Manage Links</h1>
+                <p class="subtitle">Create and organize links for all positions</p>
+            </div>
+            <button onclick="openAddModal()" class="btn btn-primary">
+                + Add New Link
+            </button>
+        </div>
+
+        <div id="linksContainer" class="admin-links-container">
+            <div class="loading">Loading links...</div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Link Modal -->
+    <div id="linkModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Link</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="linkForm">
+                <input type="hidden" id="linkId">
+                
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="url">URL *</label>
+                    <input type="url" id="url" required placeholder="https://example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="position">Position *</label>
+                    <input type="text" id="position" required list="positionsList">
+                    <datalist id="positionsList"></datalist>
+                    <small>Only employees with this position will see this link</small>
+                </div>
+                
+                <div id="modalError" class="error-message" style="display: none;"></div>
+                
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            document.querySelector('.sun-icon').style.display = newTheme === 'dark' ? 'none' : 'block';
+            document.querySelector('.moon-icon').style.display = newTheme === 'dark' ? 'block' : 'none';
+        }
+
+        // Load saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                document.querySelector('.sun-icon').style.display = 'none';
+                document.querySelector('.moon-icon').style.display = 'block';
+            }
+        })();
+
+        let allLinks = [];
+        let positions = [];
+
+        async function loadLinks() {
+            try {
+                const response = await fetch('/api/admin/links');
+                const data = await response.json();
+                allLinks = data.links;
+                
+                displayLinks();
+            } catch (error) {
+                document.getElementById('linksContainer').innerHTML = 
+                    '<div class="error-message">Error loading links</div>';
+            }
+        }
+
+        async function loadPositions() {
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                positions = data.positions;
+                
+                const datalist = document.getElementById('positionsList');
+                datalist.innerHTML = positions.map(pos => `<option value="${pos}">`).join('');
+            } catch (error) {
+                console.error('Error loading positions:', error);
+            }
+        }
+
+        function displayLinks() {
+            const container = document.getElementById('linksContainer');
+            
+            if (allLinks.length === 0) {
+                container.innerHTML = '<div class="empty-state">No links created yet. Click "Add New Link" to get started.</div>';
+                return;
+            }
+            
+            // Group by position
+            const linksByPosition = {};
+            allLinks.forEach(link => {
+                if (!linksByPosition[link.position]) {
+                    linksByPosition[link.position] = [];
+                }
+                linksByPosition[link.position].push(link);
+            });
+            
+            container.innerHTML = Object.keys(linksByPosition).sort().map(position => `
+                <div class="position-group">
+                    <h3 class="position-title">${escapeHtml(position)}</h3>
+                    <div class="links-grid">
+                        ${linksByPosition[position].map(link => `
+                            <div class="admin-link-card">
+                                <h4>${escapeHtml(link.title)}</h4>
+                                ${link.description ? `<p>${escapeHtml(link.description)}</p>` : ''}
+                                <a href="${escapeHtml(link.url)}" target="_blank" class="link-url">${escapeHtml(link.url)}</a>
+                                <div class="link-meta">
+                                    <span>By ${escapeHtml(link.created_by || 'Admin')}</span>
+                                    <span>${new Date(link.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <div class="link-actions">
+                                    <button onclick="editLink(${link.id})" class="btn btn-small btn-secondary">Edit</button>
+                                    <button onclick="deleteLink(${link.id})" class="btn btn-small btn-danger">Delete</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Link';
+            document.getElementById('linkForm').reset();
+            document.getElementById('linkId').value = '';
+            const errorDiv = document.getElementById('modalError');
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+            document.getElementById('linkModal').style.display = 'block';
+        }
+
+        function editLink(id) {
+            const link = allLinks.find(l => l.id === id);
+            if (!link) return;
+            
+            document.getElementById('modalTitle').textContent = 'Edit Link';
+            document.getElementById('linkId').value = link.id;
+            document.getElementById('title').value = link.title;
+            document.getElementById('url').value = link.url;
+            document.getElementById('description').value = link.description || '';
+            document.getElementById('position').value = link.position;
+            const errorDiv = document.getElementById('modalError');
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+            document.getElementById('linkModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('linkModal').style.display = 'none';
+        }
+
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const linkId = document.getElementById('linkId').value;
+            const data = {
+                title: document.getElementById('title').value,
+                url: document.getElementById('url').value,
+                description: document.getElementById('description').value,
+                position: document.getElementById('position').value
+            };
+            
+            const errorDiv = document.getElementById('modalError');
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+            
+            try {
+                const url = linkId ? `/api/admin/links/${linkId}` : '/api/admin/links';
+                const method = linkId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    closeModal();
+                    loadLinks();
+                } else {
+                    errorDiv.textContent = result.error || 'Error saving link';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        async function deleteLink(id) {
+            if (!confirm('Are you sure you want to delete this link?')) return;
+            
+            try {
+                const response = await fetch(`/api/admin/links/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadLinks();
+                } else {
+                    alert('Error deleting link');
+                }
+            } catch (error) {
+                alert('Connection error. Please try again.');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modal on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('linkModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        loadLinks();
+        loadPositions();
+    </script>
+</body>
+</html>
