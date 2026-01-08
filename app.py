@@ -92,12 +92,11 @@ def get_links():
     employee_info = request.employee_info
     user_position = employee_info.get("position")
 
-    # Get links for user's position
-    links = (
-        Link.query.filter_by(position=user_position)
-        .order_by(Link.created_at.desc())
-        .all()
-    )
+    # Get all links and filter by position
+    all_links = Link.query.order_by(Link.created_at.desc()).all()
+
+    # Filter links that include user's position
+    links = [link for link in all_links if link.has_position(user_position)]
 
     return jsonify(
         {"links": [link.to_dict() for link in links], "position": user_position}
@@ -122,18 +121,20 @@ def create_link():
     title = data.get("title")
     url = data.get("url")
     description = data.get("description", "")
-    position = data.get("position")
+    positions = data.get("positions", [])  # Changed: Now accepts list
 
-    if not title or not url or not position:
-        return jsonify({"error": "Title, URL, and position are required"}), 400
+    if not title or not url or not positions:
+        return jsonify(
+            {"error": "Title, URL, and at least one position are required"}
+        ), 400
 
     link = Link(
         title=title,
         url=url,
         description=description,
-        position=position,
         created_by=employee_info.get("user", {}).get("username"),
     )
+    link.set_positions_list(positions)  # Set positions from list
 
     db.session.add(link)
     db.session.commit()
@@ -157,7 +158,12 @@ def update_link(link_id):
     link.title = data.get("title", link.title)
     link.url = data.get("url", link.url)
     link.description = data.get("description", link.description)
-    link.position = data.get("position", link.position)
+
+    # Update positions if provided
+    if "positions" in data:
+        positions = data.get("positions", [])
+        if positions:
+            link.set_positions_list(positions)
 
     db.session.commit()
 
@@ -182,7 +188,7 @@ def delete_link(link_id):
 
 
 @app.route("/api/positions", methods=["GET"])
-@admin_required
+@login_required  # Changed: Allow all authenticated users to see positions
 def get_positions():
     """Get all unique positions (for dropdown in admin panel)"""
     # Get unique positions from core auth system
@@ -195,11 +201,14 @@ def get_positions():
 
         if response.status_code == 200:
             employees = response.json().get("results", [])
-            positions = list(set(emp.get("position") for emp in employees))
+            positions = list(
+                set(emp.get("position") for emp in employees if emp.get("position"))
+            )
             return jsonify({"positions": sorted(positions)})
 
         return jsonify({"positions": []})
     except Exception as e:
+        print(f"Error fetching positions: {e}")
         return jsonify({"positions": []})
 
 

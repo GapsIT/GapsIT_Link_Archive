@@ -70,10 +70,20 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="position">Position *</label>
-                    <input type="text" id="position" required list="positionsList">
-                    <datalist id="positionsList"></datalist>
-                    <small>Only employees with this position will see this link</small>
+                    <label>Positions * <small>(Click to select or type to search)</small></label>
+                    <div class="tag-input-container" id="tagInputContainer" onclick="focusPositionInput()">
+                        <div id="selectedTags"></div>
+                        <div class="position-input-wrapper">
+                            <input 
+                                type="text" 
+                                id="positionInput" 
+                                placeholder="Type to search positions..."
+                                autocomplete="off"
+                            >
+                            <div id="tagSuggestions" class="tag-suggestions"></div>
+                        </div>
+                    </div>
+                    <small>Select one or more positions that can see this link</small>
                 </div>
                 
                 <div id="modalError" class="error-message" style="display: none;"></div>
@@ -113,6 +123,8 @@
 
         let allLinks = [];
         let positions = [];
+        let selectedPositions = [];
+        let selectedSuggestionIndex = -1;
 
         async function loadLinks() {
             try {
@@ -132,9 +144,6 @@
                 const response = await fetch('/api/positions');
                 const data = await response.json();
                 positions = data.positions;
-                
-                const datalist = document.getElementById('positionsList');
-                datalist.innerHTML = positions.map(pos => `<option value="${pos}">`).join('');
             } catch (error) {
                 console.error('Error loading positions:', error);
             }
@@ -148,13 +157,17 @@
                 return;
             }
             
-            // Group by position
+            // Group by positions (show each position group)
             const linksByPosition = {};
             allLinks.forEach(link => {
-                if (!linksByPosition[link.position]) {
-                    linksByPosition[link.position] = [];
-                }
-                linksByPosition[link.position].push(link);
+                link.positions.forEach(position => {
+                    if (!linksByPosition[position]) {
+                        linksByPosition[position] = [];
+                    }
+                    if (!linksByPosition[position].find(l => l.id === link.id)) {
+                        linksByPosition[position].push(link);
+                    }
+                });
             });
             
             container.innerHTML = Object.keys(linksByPosition).sort().map(position => `
@@ -166,6 +179,9 @@
                                 <h4>${escapeHtml(link.title)}</h4>
                                 ${link.description ? `<p>${escapeHtml(link.description)}</p>` : ''}
                                 <a href="${escapeHtml(link.url)}" target="_blank" class="link-url">${escapeHtml(link.url)}</a>
+                                <div class="position-tags-display">
+                                    ${link.positions.map(pos => `<span class="position-badge">${escapeHtml(pos)}</span>`).join('')}
+                                </div>
                                 <div class="link-meta">
                                     <span>By ${escapeHtml(link.created_by || 'Admin')}</span>
                                     <span>${new Date(link.created_at).toLocaleDateString()}</span>
@@ -185,10 +201,13 @@
             document.getElementById('modalTitle').textContent = 'Add New Link';
             document.getElementById('linkForm').reset();
             document.getElementById('linkId').value = '';
+            selectedPositions = [];
+            renderSelectedTags();
             const errorDiv = document.getElementById('modalError');
             errorDiv.textContent = '';
             errorDiv.style.display = 'none';
             document.getElementById('linkModal').style.display = 'block';
+            setTimeout(() => focusPositionInput(), 100);
         }
 
         function editLink(id) {
@@ -200,7 +219,8 @@
             document.getElementById('title').value = link.title;
             document.getElementById('url').value = link.url;
             document.getElementById('description').value = link.description || '';
-            document.getElementById('position').value = link.position;
+            selectedPositions = [...link.positions];
+            renderSelectedTags();
             const errorDiv = document.getElementById('modalError');
             errorDiv.textContent = '';
             errorDiv.style.display = 'none';
@@ -209,17 +229,147 @@
 
         function closeModal() {
             document.getElementById('linkModal').style.display = 'none';
+            hideSuggestions();
         }
+
+        function focusPositionInput() {
+            document.getElementById('positionInput').focus();
+        }
+
+        function renderSelectedTags() {
+            const container = document.getElementById('selectedTags');
+            container.innerHTML = selectedPositions.map(pos => `
+                <span class="tag">
+                    ${escapeHtml(pos)}
+                    <span class="tag-remove" onclick="removePosition('${escapeHtml(pos).replace(/'/g, "\\'")}')">&times;</span>
+                </span>
+            `).join('');
+        }
+
+        function addPosition(position) {
+            if (!selectedPositions.includes(position)) {
+                selectedPositions.push(position);
+                renderSelectedTags();
+            }
+            document.getElementById('positionInput').value = '';
+            hideSuggestions();
+            focusPositionInput();
+        }
+
+        function removePosition(position) {
+            selectedPositions = selectedPositions.filter(p => p !== position);
+            renderSelectedTags();
+            focusPositionInput();
+        }
+
+        function showSuggestions(query) {
+            const suggestions = document.getElementById('tagSuggestions');
+            const filtered = positions.filter(pos => 
+                !selectedPositions.includes(pos) && 
+                pos.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            selectedSuggestionIndex = -1;
+            suggestions.innerHTML = filtered.map((pos, index) => `
+                <div class="tag-suggestion-item" data-position="${escapeHtml(pos)}" data-index="${index}">
+                    ${escapeHtml(pos)}
+                </div>
+            `).join('');
+            
+            suggestions.classList.add('show');
+
+            // Add click handlers
+            suggestions.querySelectorAll('.tag-suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    addPosition(item.dataset.position);
+                });
+            });
+        }
+
+        function hideSuggestions() {
+            document.getElementById('tagSuggestions').classList.remove('show');
+            selectedSuggestionIndex = -1;
+        }
+
+        function highlightSuggestion(index) {
+            const suggestions = document.querySelectorAll('.tag-suggestion-item');
+            suggestions.forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        // Position input event handlers
+        document.getElementById('positionInput').addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            if (query) {
+                showSuggestions(query);
+            } else {
+                showSuggestions('');
+            }
+        });
+
+        document.getElementById('positionInput').addEventListener('focus', (e) => {
+            const query = e.target.value.trim();
+            showSuggestions(query || '');
+        });
+
+        document.getElementById('positionInput').addEventListener('keydown', (e) => {
+            const suggestions = document.querySelectorAll('.tag-suggestion-item');
+            const suggestionsVisible = document.getElementById('tagSuggestions').classList.contains('show');
+
+            if (e.key === 'ArrowDown' && suggestionsVisible) {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
+                highlightSuggestion(selectedSuggestionIndex);
+            } else if (e.key === 'ArrowUp' && suggestionsVisible) {
+                e.preventDefault();
+                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
+                highlightSuggestion(selectedSuggestionIndex);
+            } else if (e.key === 'Enter' && suggestionsVisible) {
+                e.preventDefault();
+                if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+                    addPosition(suggestions[selectedSuggestionIndex].dataset.position);
+                }
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            } else if (e.key === 'Backspace' && e.target.value === '' && selectedPositions.length > 0) {
+                removePosition(selectedPositions[selectedPositions.length - 1]);
+            }
+        });
+
+        // Click outside to close suggestions
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.position-input-wrapper') && !e.target.closest('.tag-input-container')) {
+                hideSuggestions();
+            }
+        });
 
         document.getElementById('linkForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            if (selectedPositions.length === 0) {
+                const errorDiv = document.getElementById('modalError');
+                errorDiv.textContent = 'Please select at least one position';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
             const linkId = document.getElementById('linkId').value;
             const data = {
                 title: document.getElementById('title').value,
                 url: document.getElementById('url').value,
                 description: document.getElementById('description').value,
-                position: document.getElementById('position').value
+                positions: selectedPositions
             };
             
             const errorDiv = document.getElementById('modalError');
