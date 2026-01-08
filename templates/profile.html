@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Gaps IT Link Archieve Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+        <svg class="moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+        </svg>
+    </button>
+
+    <nav class="navbar">
+        <div class="nav-content">
+            <h2>Gaps IT Link Archieve</h2>
+            <div class="nav-right">
+                <span class="user-info">
+                    {{ employee.name }} ({{ employee.position }})
+                    {% if employee.is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
+                </span>
+                <a href="/dashboard" class="btn btn-secondary">My Links</a>
+                {% if employee.is_admin %}
+                <a href="/admin" class="btn btn-secondary">Admin Panel</a>
+                {% endif %}
+                <a href="/logout" class="btn btn-outline">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>My Profile</h1>
+                <p class="subtitle">View and manage your account information</p>
+            </div>
+        </div>
+
+        <div class="profile-container">
+            <!-- Profile Information Card -->
+            <div class="profile-card">
+                <h2>Personal Information</h2>
+                <div id="profileInfo" class="profile-info-grid">
+                    <div class="loading">Loading profile...</div>
+                </div>
+            </div>
+
+            <!-- Change Password Card -->
+            <div class="profile-card">
+                <h2>Change Password</h2>
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="oldPassword">Current Password *</label>
+                        <input type="password" id="oldPassword" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">New Password *</label>
+                        <input type="password" id="newPassword" required minlength="6">
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password *</label>
+                        <input type="password" id="confirmPassword" required minlength="6">
+                    </div>
+                    
+                    <div id="passwordError" class="error-message" style="display: none;"></div>
+                    <div id="passwordSuccess" class="success-message" style="display: none;"></div>
+                    
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .profile-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 800px;
+        }
+
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-card h2 {
+            margin: 0 0 1.5rem 0;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+        }
+
+        .profile-info-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .profile-info-item {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .profile-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-info-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .profile-info-value {
+            color: var(--text-primary);
+        }
+
+        .profile-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .profile-info-item {
+                grid-template-columns: 1fr;
+                gap: 0.25rem;
+            }
+
+            .profile-info-label {
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+
+    <script>
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            document.querySelector('.sun-icon').style.display = newTheme === 'dark' ? 'none' : 'block';
+            document.querySelector('.moon-icon').style.display = newTheme === 'dark' ? 'block' : 'none';
+        }
+
+        // Load saved theme
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            if (savedTheme === 'dark') {
+                document.querySelector('.sun-icon').style.display = 'none';
+                document.querySelector('.moon-icon').style.display = 'block';
+            }
+        })();
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/profile');
+                const data = await response.json();
+                
+                const container = document.getElementById('profileInfo');
+                
+                if (response.ok && data.profile) {
+                    const profile = data.profile;
+                    
+                    container.innerHTML = `
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Name:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.name)}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Username:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.user.username)}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Email:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.user.email || 'Not set')}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Phone:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.phone || 'Not set')}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Address:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.address || 'Not set')}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Position:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.position)}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Role:</span>
+                            <span class="profile-info-value">
+                                ${profile.is_admin ? '<span class="profile-badge">ADMIN</span>' : escapeHtml(profile.role || 'Employee')}
+                            </span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Salary:</span>
+                            <span class="profile-info-value">$${parseFloat(profile.salary).toLocaleString()}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Join Date:</span>
+                            <span class="profile-info-value">${new Date(profile.join_date).toLocaleDateString()}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <span class="profile-info-label">Emergency Contact:</span>
+                            <span class="profile-info-value">${escapeHtml(profile.emergency_contact || 'Not set')}</span>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<div class="error-message">Error loading profile information</div>';
+                }
+            } catch (error) {
+                document.getElementById('profileInfo').innerHTML = 
+                    '<div class="error-message">Error loading profile. Please refresh the page.</div>';
+            }
+        }
+
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            const errorDiv = document.getElementById('passwordError');
+            const successDiv = document.getElementById('passwordSuccess');
+            
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+            successDiv.textContent = '';
+            successDiv.style.display = 'none';
+            
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                errorDiv.textContent = 'New passwords do not match';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            // Validate password length
+            if (newPassword.length < 6) {
+                errorDiv.textContent = 'New password must be at least 6 characters';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        old_password: oldPassword,
+                        new_password: newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    successDiv.textContent = 'Password changed successfully!';
+                    successDiv.style.display = 'block';
+                    document.getElementById('changePasswordForm').reset();
+                    
+                    // Scroll to success message
+                    successDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    errorDiv.textContent = data.error || 'Error changing password';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

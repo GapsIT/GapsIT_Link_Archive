@@ -25,6 +25,7 @@
                     {{ employee.name }} ({{ employee.position }})
                     {% if employee.is_admin %}<span class="admin-badge">ADMIN</span>{% endif %}
                 </span>
+                <a href="/profile" class="btn btn-secondary">Profile</a>
                 {% if employee.is_admin %}
                 <a href="/admin" class="btn btn-secondary">Admin Panel</a>
                 {% endif %}

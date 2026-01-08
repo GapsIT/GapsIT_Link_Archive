@@ -77,12 +77,82 @@ def dashboard():
     return render_template("dashboard.html", employee=employee_info)
 
 
+@app.route("/profile")
+@login_required
+def profile_page():
+    """Profile page - shows employee information"""
+    employee_info = request.employee_info
+    return render_template("profile.html", employee=employee_info)
+
+
 @app.route("/admin")
 @admin_required
 def admin_panel():
     """Admin panel for managing links"""
     employee_info = request.employee_info
     return render_template("admin.html", employee=employee_info)
+
+
+@app.route("/api/profile", methods=["GET"])
+@login_required
+def get_profile():
+    """Get current user's profile information"""
+    try:
+        auth_url = app.config["AUTH_SYSTEM_URL"]
+        token = session.get("access_token")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = requests.get(f"{auth_url}/api/employees/me/", headers=headers)
+
+        if response.status_code == 200:
+            profile_data = response.json()
+            return jsonify({"success": True, "profile": profile_data})
+        else:
+            return jsonify({"error": "Unable to fetch profile"}), 500
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/change-password", methods=["POST"])
+@login_required
+def change_password():
+    """Change user password"""
+    data = request.json
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+
+    if not old_password or not new_password:
+        return jsonify({"error": "Both old and new passwords are required"}), 400
+
+    if len(new_password) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+    try:
+        auth_url = app.config["AUTH_SYSTEM_URL"]
+        token = session.get("access_token")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        response = requests.post(
+            f"{auth_url}/api/employees/change_password/",
+            json={"old_password": old_password, "new_password": new_password},
+            headers=headers,
+        )
+
+        if response.status_code == 200:
+            return jsonify(
+                {"success": True, "message": "Password changed successfully"}
+            )
+        else:
+            error_data = response.json()
+            error_message = (
+                error_data.get("error")
+                or error_data.get("old_password", ["Invalid current password"])[0]
+            )
+            return jsonify({"error": error_message}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/links", methods=["GET"])
@@ -96,10 +166,10 @@ def get_links():
     all_links = Link.query.order_by(Link.created_at.desc()).all()
 
     # Filter links that include user's position
-    links = [link for link in all_links if link.has_position(user_position)]
+    user_links = [link for link in all_links if link.has_position(user_position)]
 
     return jsonify(
-        {"links": [link.to_dict() for link in links], "position": user_position}
+        {"links": [link.to_dict() for link in user_links], "position": user_position}
     )
 
 
@@ -121,12 +191,16 @@ def create_link():
     title = data.get("title")
     url = data.get("url")
     description = data.get("description", "")
-    positions = data.get("positions", [])  # Changed: Now accepts list
+    positions = data.get("positions", [])  # Changed: expect list
 
     if not title or not url or not positions:
         return jsonify(
             {"error": "Title, URL, and at least one position are required"}
         ), 400
+
+    # Ensure positions is a list
+    if isinstance(positions, str):
+        positions = [positions]
 
     link = Link(
         title=title,
@@ -134,7 +208,7 @@ def create_link():
         description=description,
         created_by=employee_info.get("user", {}).get("username"),
     )
-    link.set_positions_list(positions)  # Set positions from list
+    link.set_positions_list(positions)  # Use the helper method
 
     db.session.add(link)
     db.session.commit()
@@ -162,8 +236,9 @@ def update_link(link_id):
     # Update positions if provided
     if "positions" in data:
         positions = data.get("positions", [])
-        if positions:
-            link.set_positions_list(positions)
+        if isinstance(positions, str):
+            positions = [positions]
+        link.set_positions_list(positions)
 
     db.session.commit()
 
@@ -188,7 +263,7 @@ def delete_link(link_id):
 
 
 @app.route("/api/positions", methods=["GET"])
-@login_required  # Changed: Allow all authenticated users to see positions
+@admin_required
 def get_positions():
     """Get all unique positions (for dropdown in admin panel)"""
     # Get unique positions from core auth system
@@ -208,7 +283,6 @@ def get_positions():
 
         return jsonify({"positions": []})
     except Exception as e:
-        print(f"Error fetching positions: {e}")
         return jsonify({"positions": []})
 
 

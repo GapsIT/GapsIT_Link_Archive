@@ -5,6 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Gaps IT Link Archieve</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .positions-input-container {
+            position: relative;
+        }
+        
+        .selected-positions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            min-height: 32px;
+        }
+        
+        .position-tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .position-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .position-tag button:hover {
+            opacity: 0.8;
+        }
+        
+        .positions-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        
+        .position-badge {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+    </style>
 </head>
 <body>
     <!-- Theme Toggle Button -->
@@ -23,6 +77,7 @@
             <div class="nav-right">
                 <span class="user-info">{{ employee.name }}</span>
                 <a href="/dashboard" class="btn btn-secondary">My Links</a>
+                <a href="/profile" class="btn btn-secondary">Profile</a>
                 <a href="/logout" class="btn btn-outline">Logout</a>
             </div>
         </div>
@@ -70,20 +125,13 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Positions * <small>(Click to select or type to search)</small></label>
-                    <div class="tag-input-container" id="tagInputContainer" onclick="focusPositionInput()">
-                        <div id="selectedTags"></div>
-                        <div class="position-input-wrapper">
-                            <input 
-                                type="text" 
-                                id="positionInput" 
-                                placeholder="Type to search positions..."
-                                autocomplete="off"
-                            >
-                            <div id="tagSuggestions" class="tag-suggestions"></div>
-                        </div>
+                    <label for="positionInput">Positions *</label>
+                    <div class="positions-input-container">
+                        <input type="text" id="positionInput" list="positionsList" placeholder="Type or select a position">
+                        <datalist id="positionsList"></datalist>
+                        <div id="selectedPositions" class="selected-positions"></div>
                     </div>
-                    <small>Select one or more positions that can see this link</small>
+                    <small>Select multiple positions that can access this link</small>
                 </div>
                 
                 <div id="modalError" class="error-message" style="display: none;"></div>
@@ -124,7 +172,49 @@
         let allLinks = [];
         let positions = [];
         let selectedPositions = [];
-        let selectedSuggestionIndex = -1;
+
+        // Position selection management
+        const positionInput = document.getElementById('positionInput');
+        const selectedPositionsContainer = document.getElementById('selectedPositions');
+
+        positionInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addPosition();
+            }
+        });
+
+        positionInput.addEventListener('change', () => {
+            addPosition();
+        });
+
+        function addPosition() {
+            const position = positionInput.value.trim();
+            if (position && !selectedPositions.includes(position)) {
+                selectedPositions.push(position);
+                renderSelectedPositions();
+                positionInput.value = '';
+            }
+        }
+
+        function removePosition(position) {
+            selectedPositions = selectedPositions.filter(p => p !== position);
+            renderSelectedPositions();
+        }
+
+        function renderSelectedPositions() {
+            if (selectedPositions.length === 0) {
+                selectedPositionsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">No positions selected</span>';
+                return;
+            }
+            
+            selectedPositionsContainer.innerHTML = selectedPositions.map(pos => `
+                <span class="position-tag">
+                    ${escapeHtml(pos)}
+                    <button type="button" onclick="removePosition('${escapeHtml(pos)}')" title="Remove">&times;</button>
+                </span>
+            `).join('');
+        }
 
         async function loadLinks() {
             try {
@@ -144,6 +234,9 @@
                 const response = await fetch('/api/positions');
                 const data = await response.json();
                 positions = data.positions;
+                
+                const datalist = document.getElementById('positionsList');
+                datalist.innerHTML = positions.map(pos => `<option value="${pos}">`).join('');
             } catch (error) {
                 console.error('Error loading positions:', error);
             }
@@ -157,17 +250,14 @@
                 return;
             }
             
-            // Group by positions (show each position group)
+            // Group by first position (for display purposes)
             const linksByPosition = {};
             allLinks.forEach(link => {
-                link.positions.forEach(position => {
-                    if (!linksByPosition[position]) {
-                        linksByPosition[position] = [];
-                    }
-                    if (!linksByPosition[position].find(l => l.id === link.id)) {
-                        linksByPosition[position].push(link);
-                    }
-                });
+                const mainPosition = link.positions[0] || 'Unassigned';
+                if (!linksByPosition[mainPosition]) {
+                    linksByPosition[mainPosition] = [];
+                }
+                linksByPosition[mainPosition].push(link);
             });
             
             container.innerHTML = Object.keys(linksByPosition).sort().map(position => `
@@ -179,7 +269,7 @@
                                 <h4>${escapeHtml(link.title)}</h4>
                                 ${link.description ? `<p>${escapeHtml(link.description)}</p>` : ''}
                                 <a href="${escapeHtml(link.url)}" target="_blank" class="link-url">${escapeHtml(link.url)}</a>
-                                <div class="position-tags-display">
+                                <div class="positions-badges">
                                     ${link.positions.map(pos => `<span class="position-badge">${escapeHtml(pos)}</span>`).join('')}
                                 </div>
                                 <div class="link-meta">
@@ -202,12 +292,11 @@
             document.getElementById('linkForm').reset();
             document.getElementById('linkId').value = '';
             selectedPositions = [];
-            renderSelectedTags();
+            renderSelectedPositions();
             const errorDiv = document.getElementById('modalError');
             errorDiv.textContent = '';
             errorDiv.style.display = 'none';
             document.getElementById('linkModal').style.display = 'block';
-            setTimeout(() => focusPositionInput(), 100);
         }
 
         function editLink(id) {
@@ -220,7 +309,7 @@
             document.getElementById('url').value = link.url;
             document.getElementById('description').value = link.description || '';
             selectedPositions = [...link.positions];
-            renderSelectedTags();
+            renderSelectedPositions();
             const errorDiv = document.getElementById('modalError');
             errorDiv.textContent = '';
             errorDiv.style.display = 'none';
@@ -229,141 +318,11 @@
 
         function closeModal() {
             document.getElementById('linkModal').style.display = 'none';
-            hideSuggestions();
         }
-
-        function focusPositionInput() {
-            document.getElementById('positionInput').focus();
-        }
-
-        function renderSelectedTags() {
-            const container = document.getElementById('selectedTags');
-            container.innerHTML = selectedPositions.map(pos => `
-                <span class="tag">
-                    ${escapeHtml(pos)}
-                    <span class="tag-remove" onclick="removePosition('${escapeHtml(pos).replace(/'/g, "\\'")}')">&times;</span>
-                </span>
-            `).join('');
-        }
-
-        function addPosition(position) {
-            if (!selectedPositions.includes(position)) {
-                selectedPositions.push(position);
-                renderSelectedTags();
-            }
-            document.getElementById('positionInput').value = '';
-            hideSuggestions();
-            focusPositionInput();
-        }
-
-        function removePosition(position) {
-            selectedPositions = selectedPositions.filter(p => p !== position);
-            renderSelectedTags();
-            focusPositionInput();
-        }
-
-        function showSuggestions(query) {
-            const suggestions = document.getElementById('tagSuggestions');
-            const filtered = positions.filter(pos => 
-                !selectedPositions.includes(pos) && 
-                pos.toLowerCase().includes(query.toLowerCase())
-            );
-
-            if (filtered.length === 0) {
-                hideSuggestions();
-                return;
-            }
-
-            selectedSuggestionIndex = -1;
-            suggestions.innerHTML = filtered.map((pos, index) => `
-                <div class="tag-suggestion-item" data-position="${escapeHtml(pos)}" data-index="${index}">
-                    ${escapeHtml(pos)}
-                </div>
-            `).join('');
-            
-            suggestions.classList.add('show');
-
-            // Add click handlers
-            suggestions.querySelectorAll('.tag-suggestion-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    addPosition(item.dataset.position);
-                });
-            });
-        }
-
-        function hideSuggestions() {
-            document.getElementById('tagSuggestions').classList.remove('show');
-            selectedSuggestionIndex = -1;
-        }
-
-        function highlightSuggestion(index) {
-            const suggestions = document.querySelectorAll('.tag-suggestion-item');
-            suggestions.forEach((item, i) => {
-                if (i === index) {
-                    item.classList.add('selected');
-                    item.scrollIntoView({ block: 'nearest' });
-                } else {
-                    item.classList.remove('selected');
-                }
-            });
-        }
-
-        // Position input event handlers
-        document.getElementById('positionInput').addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            if (query) {
-                showSuggestions(query);
-            } else {
-                showSuggestions('');
-            }
-        });
-
-        document.getElementById('positionInput').addEventListener('focus', (e) => {
-            const query = e.target.value.trim();
-            showSuggestions(query || '');
-        });
-
-        document.getElementById('positionInput').addEventListener('keydown', (e) => {
-            const suggestions = document.querySelectorAll('.tag-suggestion-item');
-            const suggestionsVisible = document.getElementById('tagSuggestions').classList.contains('show');
-
-            if (e.key === 'ArrowDown' && suggestionsVisible) {
-                e.preventDefault();
-                selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
-                highlightSuggestion(selectedSuggestionIndex);
-            } else if (e.key === 'ArrowUp' && suggestionsVisible) {
-                e.preventDefault();
-                selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, 0);
-                highlightSuggestion(selectedSuggestionIndex);
-            } else if (e.key === 'Enter' && suggestionsVisible) {
-                e.preventDefault();
-                if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
-                    addPosition(suggestions[selectedSuggestionIndex].dataset.position);
-                }
-            } else if (e.key === 'Escape') {
-                hideSuggestions();
-            } else if (e.key === 'Backspace' && e.target.value === '' && selectedPositions.length > 0) {
-                removePosition(selectedPositions[selectedPositions.length - 1]);
-            }
-        });
-
-        // Click outside to close suggestions
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.position-input-wrapper') && !e.target.closest('.tag-input-container')) {
-                hideSuggestions();
-            }
-        });
 
         document.getElementById('linkForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (selectedPositions.length === 0) {
-                const errorDiv = document.getElementById('modalError');
-                errorDiv.textContent = 'Please select at least one position';
-                errorDiv.style.display = 'block';
-                return;
-            }
-
             const linkId = document.getElementById('linkId').value;
             const data = {
                 title: document.getElementById('title').value,
@@ -375,6 +334,12 @@
             const errorDiv = document.getElementById('modalError');
             errorDiv.textContent = '';
             errorDiv.style.display = 'none';
+            
+            if (selectedPositions.length === 0) {
+                errorDiv.textContent = 'Please select at least one position';
+                errorDiv.style.display = 'block';
+                return;
+            }
             
             try {
                 const url = linkId ? `/api/admin/links/${linkId}` : '/api/admin/links';
@@ -433,6 +398,9 @@
             }
         }
 
+        // Initialize selected positions display
+        renderSelectedPositions();
+        
         loadLinks();
         loadPositions();
     </script>
