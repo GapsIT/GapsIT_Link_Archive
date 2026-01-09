@@ -53,7 +53,10 @@
         </div>
 
         <div id="linksContainer" class="links-container">
-            <div class="loading">Loading links...</div>
+            <!-- Loading skeleton -->
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
         </div>
     </div>
 
@@ -86,7 +89,7 @@
         function copyToClipboard(text, button) {
             navigator.clipboard.writeText(text).then(() => {
                 const originalText = button.textContent;
-                button.textContent = 'Copied!';
+                button.textContent = '✓ Copied!';
                 button.classList.add('copied');
                 
                 setTimeout(() => {
@@ -100,11 +103,11 @@
         }
 
         async function loadLinks() {
+            const container = document.getElementById('linksContainer');
+            
             try {
                 const response = await fetch('/api/links');
                 const data = await response.json();
-                
-                const container = document.getElementById('linksContainer');
                 
                 if (data.links && data.links.length > 0) {
                     container.innerHTML = data.links.map(link => `
@@ -112,25 +115,47 @@
                             <h3>${escapeHtml(link.title)}</h3>
                             ${link.description ? `<p class="link-description">${escapeHtml(link.description)}</p>` : ''}
                             <div class="link-url-container">
-                                <a href="${escapeHtml(link.url)}" target="_blank" class="link-url-text" title="${escapeHtml(link.url)}">
+                                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-url-text" title="${escapeHtml(link.url)}">
                                     ${escapeHtml(link.url)}
                                 </a>
-                                <button onclick='copyToClipboard("${escapeHtml(link.url).replace(/"/g, '&quot;')}", this)' class="copy-btn">
+                                <button onclick='copyToClipboard(\`${escapeHtml(link.url).replace(/`/g, '\\`')}\`, this)' class="copy-btn" aria-label="Copy link">
                                     Copy
                                 </button>
                             </div>
                             <div class="link-meta">
-                                <span>Added by ${escapeHtml(link.created_by || 'Admin')}</span>
-                                <span>${new Date(link.created_at).toLocaleDateString()}</span>
+                                <span>
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                    ${escapeHtml(link.created_by || 'Admin')}
+                                </span>
+                                <span>
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    ${new Date(link.created_at).toLocaleDateString()}
+                                </span>
                             </div>
                         </div>
                     `).join('');
                 } else {
-                    container.innerHTML = '<div class="empty-state">No links available for your position yet.</div>';
+                    container.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <div class="empty-state-icon">📋</div>
+                            <h3>No Links Available</h3>
+                            <p>No links have been added for your position yet.</p>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                document.getElementById('linksContainer').innerHTML = 
-                    '<div class="error-message">Error loading links. Please refresh the page.</div>';
+                container.innerHTML = `
+                    <div class="error-message" style="grid-column: 1 / -1;">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Error loading links. Please refresh the page.
+                    </div>
+                `;
             }
         }
 
@@ -140,7 +165,8 @@
             return div.innerHTML;
         }
 
-        loadLinks();
+        // Load links with a small delay to show skeleton
+        setTimeout(loadLinks, 300);
     </script>
 </body>
 </html>
