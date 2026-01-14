@@ -1,448 +1,717 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Gaps IT Link Archieve</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Gaps IT Link Archive</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
     <!-- Theme Toggle Button -->
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-        <svg class="sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-        </svg>
-        <svg class="moon-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-        </svg>
+    <button
+      class="theme-toggle"
+      onclick="toggleTheme()"
+      aria-label="Toggle theme"
+    >
+      <svg
+        class="sun-icon"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        ></path>
+      </svg>
+      <svg
+        class="moon-icon"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        style="display: none"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+        ></path>
+      </svg>
     </button>
 
+    <!-- Mobile Overlay -->
+    <div
+      class="mobile-overlay"
+      id="mobileOverlay"
+      onclick="toggleMobileMenu()"
+    ></div>
+
     <nav class="navbar">
-        <div class="nav-content">
-            <h2>Gaps IT Link Archieve - Admin Panel</h2>
-            <div class="nav-right">
-                <span class="user-info">{{ employee.name }}</span>
-                <a href="/dashboard" class="btn btn-secondary">My Links</a>
-                <a href="/profile" class="btn btn-secondary">Profile</a>
-                <a href="/logout" class="btn btn-outline">Logout</a>
-            </div>
+      <div class="nav-content">
+        <h2>Admin Panel - Gaps IT Link Archive</h2>
+        <button
+          class="hamburger"
+          id="hamburger"
+          onclick="toggleMobileMenu()"
+          aria-label="Menu"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="nav-right" id="navRight">
+          <span class="user-info">{{ employee.name }}</span>
+          <a href="/dashboard" class="btn btn-secondary">My Links</a>
+          <a href="/profile" class="btn btn-secondary">Profile</a>
+          <a href="/logout" class="btn btn-outline">Logout</a>
         </div>
+      </div>
     </nav>
 
     <div class="container">
-        <div class="header">
-            <div>
-                <h1>Manage Links</h1>
-                <p class="subtitle">Create and organize links for all positions</p>
-            </div>
-            <button onclick="openAddModal()" class="btn btn-primary">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Add New Link
-            </button>
+      <div class="header">
+        <div>
+          <h1>Manage Links</h1>
+          <p class="subtitle">Create and organize links for all positions</p>
         </div>
+        <button onclick="openAddModal()" class="btn btn-primary">
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            ></path>
+          </svg>
+          Add New Link
+        </button>
+      </div>
 
-        <div id="linksContainer" class="admin-links-container">
-            <div class="loading">
-                <div class="spinner spinner-lg"></div>
-                <p>Loading links...</p>
-            </div>
+      <div id="linksContainer" class="admin-links-container">
+        <div class="loading">
+          <div class="spinner spinner-lg"></div>
+          <p>Loading links...</p>
         </div>
+      </div>
     </div>
 
     <!-- Add/Edit Link Modal -->
     <div id="linkModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Add New Link</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
-            </div>
-            <form id="linkForm">
-                <input type="hidden" id="linkId">
-                
-                <div class="form-group">
-                    <label for="title">Title *</label>
-                    <input type="text" id="title" required placeholder="Enter link title">
-                </div>
-                
-                <div class="form-group">
-                    <label for="url">URL *</label>
-                    <input type="url" id="url" required placeholder="https://example.com">
-                </div>
-                
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" rows="3" placeholder="Enter a brief description (optional)"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="positionInput">Positions *</label>
-                    <div class="positions-input-container">
-                        <input type="text" id="positionInput" list="positionsList" placeholder="Type or select a position and press Enter">
-                        <datalist id="positionsList"></datalist>
-                        <div id="selectedPositions" class="selected-positions"></div>
-                    </div>
-                    <small>Select multiple positions that can access this link</small>
-                </div>
-                
-                <div id="modalError" class="error-message" style="display: none;"></div>
-                
-                <div class="modal-footer">
-                    <button type="button" onclick="closeModal()" class="btn btn-outline">Cancel</button>
-                    <button type="submit" id="saveBtn" class="btn btn-primary">
-                        <span class="btn-text">Save Link</span>
-                    </button>
-                </div>
-            </form>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Add New Link</h2>
+          <span class="close" onclick="closeModal()">&times;</span>
         </div>
+        <form id="linkForm">
+          <input type="hidden" id="linkId" />
+
+          <div class="form-group">
+            <label for="title">Title *</label>
+            <input
+              type="text"
+              id="title"
+              required
+              placeholder="Enter link title"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="url">URL *</label>
+            <input
+              type="url"
+              id="url"
+              required
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              rows="3"
+              placeholder="Enter a brief description (optional)"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="positionSelector">Positions *</label>
+            <div class="custom-select-wrapper">
+              <div class="custom-select" id="positionSelector" tabindex="0">
+                <div class="custom-select-trigger">
+                  <span id="selectPlaceholder">Select positions...</span>
+                  <svg
+                    class="select-arrow"
+                    width="18"
+                    height="18"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </div>
+                <div class="custom-select-dropdown" id="positionDropdown">
+                  <div class="select-search">
+                    <input
+                      type="text"
+                      id="positionSearch"
+                      placeholder="Search positions..."
+                    />
+                  </div>
+                  <div class="select-options" id="positionOptions">
+                    <div class="select-loading">Loading positions...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="selectedPositions" class="selected-positions"></div>
+            <small>Select multiple positions that can access this link</small>
+          </div>
+
+          <div
+            id="modalError"
+            class="error-message"
+            style="display: none"
+          ></div>
+
+          <div class="modal-footer">
+            <button
+              type="button"
+              onclick="closeModal()"
+              class="btn btn-outline"
+            >
+              Cancel
+            </button>
+            <button type="submit" id="saveBtn" class="btn btn-primary">
+              <span class="btn-text">Save Link</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <script>
-        // Theme Toggle
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            document.querySelector('.sun-icon').style.display = newTheme === 'dark' ? 'none' : 'block';
-            document.querySelector('.moon-icon').style.display = newTheme === 'dark' ? 'block' : 'none';
-        }
+      // Mobile Menu Toggle
+      function toggleMobileMenu() {
+        const hamburger = document.getElementById("hamburger");
+        const navRight = document.getElementById("navRight");
+        const overlay = document.getElementById("mobileOverlay");
 
-        // Load saved theme
-        (function() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            
-            if (savedTheme === 'dark') {
-                document.querySelector('.sun-icon').style.display = 'none';
-                document.querySelector('.moon-icon').style.display = 'block';
-            }
-        })();
+        hamburger.classList.toggle("active");
+        navRight.classList.toggle("active");
+        overlay.classList.toggle("active");
+        overlay.style.display = overlay.classList.contains("active")
+          ? "block"
+          : "none";
 
-        let allLinks = [];
-        let positions = [];
-        let selectedPositions = [];
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = navRight.classList.contains("active")
+          ? "hidden"
+          : "";
+      }
 
-        // Position selection management
-        const positionInput = document.getElementById('positionInput');
-        const selectedPositionsContainer = document.getElementById('selectedPositions');
-
-        positionInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addPosition();
-            }
+      // Close menu when clicking nav links
+      document.querySelectorAll(".nav-right a").forEach((link) => {
+        link.addEventListener("click", () => {
+          if (window.innerWidth <= 768) {
+            toggleMobileMenu();
+          }
         });
+      });
 
-        positionInput.addEventListener('change', () => {
-            addPosition();
-        });
+      // Theme Toggle
+      function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute("data-theme");
+        const newTheme = currentTheme === "dark" ? "light" : "dark";
 
-        function addPosition() {
-            const position = positionInput.value.trim();
-            if (position && !selectedPositions.includes(position)) {
-                selectedPositions.push(position);
-                renderSelectedPositions();
-                positionInput.value = '';
-            }
+        html.setAttribute("data-theme", newTheme);
+        localStorage.setItem("theme", newTheme);
+
+        document.querySelector(".sun-icon").style.display =
+          newTheme === "dark" ? "none" : "block";
+        document.querySelector(".moon-icon").style.display =
+          newTheme === "dark" ? "block" : "none";
+      }
+
+      // Load saved theme
+      (function () {
+        const savedTheme = localStorage.getItem("theme") || "light";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+
+        if (savedTheme === "dark") {
+          document.querySelector(".sun-icon").style.display = "none";
+          document.querySelector(".moon-icon").style.display = "block";
+        }
+      })();
+
+      let allLinks = [];
+      let positions = [];
+      let selectedPositions = [];
+      let filteredPositions = [];
+
+      // Custom Select Functionality
+      const positionSelector = document.getElementById("positionSelector");
+      const positionDropdown = document.getElementById("positionDropdown");
+      const positionSearch = document.getElementById("positionSearch");
+      const positionOptions = document.getElementById("positionOptions");
+      const selectedPositionsContainer =
+        document.getElementById("selectedPositions");
+
+      // Toggle dropdown
+      positionSelector.addEventListener("click", (e) => {
+        if (!e.target.closest(".custom-select-dropdown")) {
+          toggleDropdown();
+        }
+      });
+
+      // Search functionality
+      positionSearch.addEventListener("input", (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        filteredPositions = positions.filter((pos) =>
+          pos.toLowerCase().includes(searchTerm)
+        );
+        renderPositionOptions();
+      });
+
+      // Prevent dropdown close when clicking inside
+      positionDropdown.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener("click", (e) => {
+        if (!positionSelector.contains(e.target)) {
+          closeDropdown();
+        }
+      });
+
+      function toggleDropdown() {
+        const isOpen = positionDropdown.classList.contains("show");
+        if (isOpen) {
+          closeDropdown();
+        } else {
+          openDropdown();
+        }
+      }
+
+      function openDropdown() {
+        positionDropdown.classList.add("show");
+        positionSearch.focus();
+        filteredPositions = [...positions];
+        renderPositionOptions();
+      }
+
+      function closeDropdown() {
+        positionDropdown.classList.remove("show");
+        positionSearch.value = "";
+      }
+
+      function renderPositionOptions() {
+        if (filteredPositions.length === 0) {
+          positionOptions.innerHTML =
+            '<div class="select-no-results">No positions found</div>';
+          return;
         }
 
-        function removePosition(position) {
-            selectedPositions = selectedPositions.filter(p => p !== position);
-            renderSelectedPositions();
+        positionOptions.innerHTML = filteredPositions
+          .map((pos) => {
+            const isSelected = selectedPositions.includes(pos);
+            return `
+                    <div class="select-option ${isSelected ? "selected" : ""}" 
+                         onclick="togglePosition('${escapeHtml(pos).replace(
+                           /'/g,
+                           "\\'"
+                         )}')">
+                        <span class="option-checkbox">
+                            ${isSelected ? "✓" : ""}
+                        </span>
+                        <span class="option-label">${escapeHtml(pos)}</span>
+                    </div>
+                `;
+          })
+          .join("");
+      }
+
+      function togglePosition(position) {
+        const index = selectedPositions.indexOf(position);
+        if (index > -1) {
+          selectedPositions.splice(index, 1);
+        } else {
+          selectedPositions.push(position);
+        }
+        renderSelectedPositions();
+        renderPositionOptions();
+        updateSelectPlaceholder();
+      }
+
+      function removePosition(position) {
+        selectedPositions = selectedPositions.filter((p) => p !== position);
+        renderSelectedPositions();
+        renderPositionOptions();
+        updateSelectPlaceholder();
+      }
+
+      function updateSelectPlaceholder() {
+        const placeholder = document.getElementById("selectPlaceholder");
+        if (selectedPositions.length === 0) {
+          placeholder.textContent = "Select positions...";
+          placeholder.style.color = "var(--text-tertiary)";
+        } else {
+          placeholder.textContent = `${selectedPositions.length} position${
+            selectedPositions.length > 1 ? "s" : ""
+          } selected`;
+          placeholder.style.color = "var(--text-primary)";
+        }
+      }
+
+      function renderSelectedPositions() {
+        if (selectedPositions.length === 0) {
+          selectedPositionsContainer.innerHTML =
+            '<span style="color: var(--text-tertiary); font-size: 0.875rem;">No positions selected</span>';
+          return;
         }
 
-        function renderSelectedPositions() {
-            if (selectedPositions.length === 0) {
-                selectedPositionsContainer.innerHTML = '<span style="color: var(--text-tertiary); font-size: 0.875rem;">No positions selected</span>';
-                return;
-            }
-            
-            selectedPositionsContainer.innerHTML = selectedPositions.map(pos => `
+        selectedPositionsContainer.innerHTML = selectedPositions
+          .map(
+            (pos) => `
                 <span class="position-tag">
                     ${escapeHtml(pos)}
-                    <button type="button" onclick="removePosition('${escapeHtml(pos).replace(/'/g, "\\'")}')">×</button>
+                    <button type="button" onclick="removePosition('${escapeHtml(
+                      pos
+                    ).replace(/'/g, "\\'")}')">×</button>
                 </span>
-            `).join('');
-        }
+            `
+          )
+          .join("");
+      }
 
-        async function loadLinks() {
-            const container = document.getElementById('linksContainer');
-            
-            try {
-                const response = await fetch('/api/admin/links');
-                const data = await response.json();
-                allLinks = data.links;
-                
-                displayLinks();
-            } catch (error) {
-                container.innerHTML = `
+      async function loadLinks() {
+        const container = document.getElementById("linksContainer");
+
+        try {
+          const response = await fetch("/api/admin/links");
+          const data = await response.json();
+          allLinks = data.links;
+
+          displayLinks();
+        } catch (error) {
+          container.innerHTML = `
                     <div class="error-message">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         Error loading links. Please try again.
                     </div>
                 `;
-            }
         }
+      }
 
-        async function loadPositions() {
-            try {
-                const response = await fetch('/api/positions');
-                const data = await response.json();
-                positions = data.positions;
-                
-                const datalist = document.getElementById('positionsList');
-                datalist.innerHTML = positions.map(pos => `<option value="${escapeHtml(pos)}">`).join('');
-            } catch (error) {
-                console.error('Error loading positions:', error);
-            }
+      async function loadPositions() {
+        try {
+          const response = await fetch("/api/positions");
+          const data = await response.json();
+          positions = data.positions;
+          filteredPositions = [...positions];
+
+          renderPositionOptions();
+        } catch (error) {
+          console.error("Error loading positions:", error);
+          positionOptions.innerHTML =
+            '<div class="select-error">Error loading positions</div>';
         }
+      }
 
-        function displayLinks() {
-            const container = document.getElementById('linksContainer');
-            
-            if (allLinks.length === 0) {
-                container.innerHTML = `
+      function displayLinks() {
+        const container = document.getElementById("linksContainer");
+
+        if (allLinks.length === 0) {
+          container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">🔗</div>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
                         <h3>No Links Created Yet</h3>
                         <p>Click "Add New Link" to get started.</p>
                     </div>
                 `;
-                return;
-            }
-            
-            // Group by first position (for display purposes)
-            const linksByPosition = {};
-            allLinks.forEach(link => {
-                const mainPosition = link.positions[0] || 'Unassigned';
-                if (!linksByPosition[mainPosition]) {
-                    linksByPosition[mainPosition] = [];
-                }
-                linksByPosition[mainPosition].push(link);
-            });
-            
-            container.innerHTML = Object.keys(linksByPosition).sort().map(position => `
+          return;
+        }
+
+        // Group by first position
+        const linksByPosition = {};
+        allLinks.forEach((link) => {
+          const mainPosition = link.positions[0] || "Unassigned";
+          if (!linksByPosition[mainPosition]) {
+            linksByPosition[mainPosition] = [];
+          }
+          linksByPosition[mainPosition].push(link);
+        });
+
+        container.innerHTML = Object.keys(linksByPosition)
+          .sort()
+          .map(
+            (position) => `
                 <div class="position-group">
                     <h3 class="position-title">${escapeHtml(position)}</h3>
                     <div class="links-grid">
-                        ${linksByPosition[position].map(link => `
+                        ${linksByPosition[position]
+                          .map(
+                            (link) => `
                             <div class="admin-link-card">
                                 <h4>${escapeHtml(link.title)}</h4>
-                                ${link.description ? `<p>${escapeHtml(link.description)}</p>` : ''}
-                                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="link-url">${escapeHtml(link.url)}</a>
+                                ${
+                                  link.description
+                                    ? `<p>${escapeHtml(link.description)}</p>`
+                                    : ""
+                                }
+                                <a href="${escapeHtml(
+                                  link.url
+                                )}" target="_blank" rel="noopener noreferrer" class="link-url">${escapeHtml(
+                              link.url
+                            )}</a>
                                 <div class="positions-badges">
-                                    ${link.positions.map(pos => `<span class="position-badge">${escapeHtml(pos)}</span>`).join('')}
+                                    ${link.positions
+                                      .map(
+                                        (pos) =>
+                                          `<span class="position-badge">${escapeHtml(
+                                            pos
+                                          )}</span>`
+                                      )
+                                      .join("")}
                                 </div>
                                 <div class="link-meta">
                                     <span>
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                         </svg>
-                                        ${escapeHtml(link.created_by || 'Admin')}
+                                        ${escapeHtml(
+                                          link.created_by || "Admin"
+                                        )}
                                     </span>
                                     <span>
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;">
+                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                         </svg>
-                                        ${new Date(link.created_at).toLocaleDateString()}
+                                        ${new Date(
+                                          link.created_at
+                                        ).toLocaleDateString()}
                                     </span>
                                 </div>
                                 <div class="link-actions">
-                                    <button onclick="editLink(${link.id})" class="btn btn-small btn-secondary">
+                                    <button onclick="editLink(${
+                                      link.id
+                                    })" class="btn btn-small btn-secondary">
                                         <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                         Edit
                                     </button>
-                                    <button onclick="deleteLink(${link.id})" class="btn btn-small btn-danger">
-                                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                        Delete
+                                    <button onclick="deleteLink(this, ${
+                                      link.id
+                                    })" class="btn btn-small btn-danger">
+                                        <span class="btn-text">
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                            Delete
+                                        </span>
                                     </button>
                                 </div>
                             </div>
-                        `).join('')}
+                        `
+                          )
+                          .join("")}
                     </div>
                 </div>
-            `).join('');
-        }
+            `
+          )
+          .join("");
+      }
 
-        function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Add New Link';
-            document.getElementById('linkForm').reset();
-            document.getElementById('linkId').value = '';
-            selectedPositions = [];
-            renderSelectedPositions();
-            const errorDiv = document.getElementById('modalError');
-            errorDiv.textContent = '';
-            errorDiv.style.display = 'none';
-            document.getElementById('linkModal').style.display = 'flex';
-            document.getElementById('linkModal').classList.add('show');
-        }
+      function openAddModal() {
+        document.getElementById("modalTitle").textContent = "Add New Link";
+        document.getElementById("linkForm").reset();
+        document.getElementById("linkId").value = "";
+        selectedPositions = [];
+        renderSelectedPositions();
+        updateSelectPlaceholder();
+        const errorDiv = document.getElementById("modalError");
+        errorDiv.textContent = "";
+        errorDiv.style.display = "none";
+        document.getElementById("linkModal").style.display = "flex";
+        document.getElementById("linkModal").classList.add("show");
+      }
 
-        function editLink(id) {
-            const link = allLinks.find(l => l.id === id);
-            if (!link) return;
-            
-            document.getElementById('modalTitle').textContent = 'Edit Link';
-            document.getElementById('linkId').value = link.id;
-            document.getElementById('title').value = link.title;
-            document.getElementById('url').value = link.url;
-            document.getElementById('description').value = link.description || '';
-            selectedPositions = [...link.positions];
-            renderSelectedPositions();
-            const errorDiv = document.getElementById('modalError');
-            errorDiv.textContent = '';
-            errorDiv.style.display = 'none';
-            document.getElementById('linkModal').style.display = 'flex';
-            document.getElementById('linkModal').classList.add('show');
-        }
+      function editLink(id) {
+        const link = allLinks.find((l) => l.id === id);
+        if (!link) return;
 
-        function closeModal() {
-            document.getElementById('linkModal').style.display = 'none';
-            document.getElementById('linkModal').classList.remove('show');
-        }
+        document.getElementById("modalTitle").textContent = "Edit Link";
+        document.getElementById("linkId").value = link.id;
+        document.getElementById("title").value = link.title;
+        document.getElementById("url").value = link.url;
+        document.getElementById("description").value = link.description || "";
+        selectedPositions = [...link.positions];
+        renderSelectedPositions();
+        updateSelectPlaceholder();
+        const errorDiv = document.getElementById("modalError");
+        errorDiv.textContent = "";
+        errorDiv.style.display = "none";
+        document.getElementById("linkModal").style.display = "flex";
+        document.getElementById("linkModal").classList.add("show");
+      }
 
-        document.getElementById('linkForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const linkId = document.getElementById('linkId').value;
-            const data = {
-                title: document.getElementById('title').value,
-                url: document.getElementById('url').value,
-                description: document.getElementById('description').value,
-                positions: selectedPositions
-            };
-            
-            const errorDiv = document.getElementById('modalError');
-            const saveBtn = document.getElementById('saveBtn');
-            
-            errorDiv.textContent = '';
-            errorDiv.style.display = 'none';
-            
-            if (selectedPositions.length === 0) {
-                errorDiv.innerHTML = `
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      function closeModal() {
+        document.getElementById("linkModal").style.display = "none";
+        document.getElementById("linkModal").classList.remove("show");
+        closeDropdown();
+      }
+
+      document
+        .getElementById("linkForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const linkId = document.getElementById("linkId").value;
+          const data = {
+            title: document.getElementById("title").value,
+            url: document.getElementById("url").value,
+            description: document.getElementById("description").value,
+            positions: selectedPositions,
+          };
+
+          const errorDiv = document.getElementById("modalError");
+          const saveBtn = document.getElementById("saveBtn");
+
+          errorDiv.textContent = "";
+          errorDiv.style.display = "none";
+
+          if (selectedPositions.length === 0) {
+            errorDiv.innerHTML = `
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Please select at least one position
                 `;
-                errorDiv.style.display = 'flex';
-                return;
-            }
-            
-            // Show loading state
-            saveBtn.classList.add('btn-loading');
-            saveBtn.disabled = true;
-            
-            try {
-                const url = linkId ? `/api/admin/links/${linkId}` : '/api/admin/links';
-                const method = linkId ? 'PUT' : 'POST';
-                
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    closeModal();
-                    
-                    // Show loading state while refreshing
-                    document.getElementById('linksContainer').innerHTML = `
+            errorDiv.style.display = "flex";
+            return;
+          }
+
+          saveBtn.classList.add("btn-loading");
+          saveBtn.disabled = true;
+
+          try {
+            const url = linkId
+              ? `/api/admin/links/${linkId}`
+              : "/api/admin/links";
+            const method = linkId ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+              method: method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+              closeModal();
+              document.getElementById("linksContainer").innerHTML = `
                         <div class="loading">
                             <div class="spinner spinner-lg"></div>
                             <p>Refreshing links...</p>
                         </div>
                     `;
-                    
-                    await loadLinks();
-                } else {
-                    errorDiv.innerHTML = `
-                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              await loadLinks();
+            } else {
+              errorDiv.innerHTML = `
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        ${result.error || 'Error saving link'}
+                        ${result.error || "Error saving link"}
                     `;
-                    errorDiv.style.display = 'flex';
-                }
-            } catch (error) {
-                errorDiv.innerHTML = `
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              errorDiv.style.display = "flex";
+            }
+          } catch (error) {
+            errorDiv.innerHTML = `
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Connection error. Please try again.
                 `;
-                errorDiv.style.display = 'flex';
-            } finally {
-                saveBtn.classList.remove('btn-loading');
-                saveBtn.disabled = false;
-            }
+            errorDiv.style.display = "flex";
+          } finally {
+            saveBtn.classList.remove("btn-loading");
+            saveBtn.disabled = false;
+          }
         });
 
-        async function deleteLink(id) {
-            if (!confirm('Are you sure you want to delete this link?')) return;
-            
-            // Show loading overlay
-            const overlay = document.createElement('div');
-            overlay.className = 'loading-overlay';
-            overlay.innerHTML = `
-                <div class="loading-overlay-content">
-                    <div class="spinner spinner-xl"></div>
-                    <p>Deleting link...</p>
-                </div>
-            `;
-            document.body.appendChild(overlay);
-            
-            try {
-                const response = await fetch(`/api/admin/links/${id}`, {
-                    method: 'DELETE'
-                });
-                
-                if (response.ok) {
-                    await loadLinks();
-                } else {
-                    alert('Error deleting link');
-                }
-            } catch (error) {
-                alert('Connection error. Please try again.');
-            } finally {
-                document.body.removeChild(overlay);
-            }
-        }
+      async function deleteLink(btn, id) {
+        if (!confirm("Are you sure you want to delete this link?")) return;
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        // 1. Add loading state to the button
+        btn.classList.add("btn-loading");
+        btn.disabled = true;
 
-        // Close modal on outside click
-        window.onclick = function(event) {
-            const modal = document.getElementById('linkModal');
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
+        try {
+          const response = await fetch(`/api/admin/links/${id}`, {
+            method: "DELETE",
+          });
 
-        // Initialize selected positions display
-        renderSelectedPositions();
-        
-        // Load data with delay to show loading state
-        setTimeout(() => {
-            loadLinks();
-            loadPositions();
-        }, 500);
+          if (response.ok) {
+            await loadLinks();
+          } else {
+            alert("Error deleting link");
+            // Reset button if there's an error and we don't refresh
+            btn.classList.remove("btn-loading");
+            btn.disabled = false;
+          }
+        } catch (error) {
+          alert("Connection error. Please try again.");
+          btn.classList.remove("btn-loading");
+          btn.disabled = false;
+        }
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      window.onclick = function (event) {
+        const modal = document.getElementById("linkModal");
+        if (event.target == modal) {
+          closeModal();
+        }
+      };
+
+      renderSelectedPositions();
+      updateSelectPlaceholder();
+
+      setTimeout(() => {
+        loadLinks();
+        loadPositions();
+      }, 500);
     </script>
-</body>
+  </body>
 </html>
